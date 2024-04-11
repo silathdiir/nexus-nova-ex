@@ -14,6 +14,8 @@ use std::marker::PhantomData;
 #[derive(Debug, Default)]
 pub struct TestCircuit<F: Field>(PhantomData<F>);
 
+/// The test circuit has two sub-circuits: + 2 and * 2, the selector (0 or 1)
+/// decides to apply which circuit in each proving step.
 impl<F: PrimeField> NonUniformCircuit<F> for TestCircuit<F> {
     const ARITY: usize = 2;
 
