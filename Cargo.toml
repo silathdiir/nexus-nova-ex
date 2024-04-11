@@ -3,6 +3,12 @@ name = "nexus-nova-ex"
 version = "0.1.0"
 edition = "2021"
 
+
+[[bench]]
+name = "main"
+path = "src/main.rs"
+harness = false
+
 [dependencies]
 nexus-nova = { git = "https://github.com/nexus-xyz/nexus-zkvm.git" }
 criterion = "0.5"

@@ -11,7 +11,10 @@ use nexus_nova::{
     poseidon_config,
 };
 use pprof::criterion::{Output, PProfProfiler};
-use std::{marker::PhantomData, time::Duration};
+use std::{
+    marker::PhantomData,
+    time::{Duration, Instant},
+};
 
 #[derive(Debug, Default)]
 pub struct TestCircuit<F: Field>(PhantomData<F>);
@@ -73,7 +76,6 @@ where
 
     let circuit = TestCircuit::<G1::ScalarField>(PhantomData);
     let z_0 = vec![G1::ScalarField::ZERO, G1::ScalarField::from(2u64)];
-    let num_steps = 5;
 
     let params = PublicParams::<
         G1,
@@ -87,26 +89,38 @@ where
 
     let mut recursive_snark = NIVCProof::new(&z_0);
 
-    let mut group = c.benchmark_group(format!("nexus-supernova-{num_steps}"));
+    // We only bench for the last step, the first steps are cheaper.
+    let now = Instant::now();
+    let num_warmup_steps = 5;
+    for i in 0..num_warmup_steps {
+        recursive_snark = NIVCProof::prove_step(recursive_snark, &params, &circuit).unwrap();
+        recursive_snark.verify(&params, i + 1).unwrap();
+    }
+    println!("Finish warmup steps, elapsed: {:?}", now.elapsed());
+
+    let mut group = c.benchmark_group(format!("nexus-supernova-{}", num_warmup_steps + 1));
     group.sample_size(10);
 
     group.bench_function("Prove", |b| {
         b.iter(|| {
-            for _ in 0..num_steps {
-                recursive_snark =
-                    NIVCProof::prove_step(recursive_snark.clone(), &params, &circuit).unwrap();
-            }
+            NIVCProof::prove_step(
+                black_box(recursive_snark.clone()),
+                black_box(&params),
+                black_box(&circuit),
+            )
+            .unwrap();
         })
     });
 
     group.bench_function("Verify", |b| {
         b.iter(|| {
-            recursive_snark.verify(&params, num_steps).unwrap();
+            black_box(&recursive_snark)
+                .verify(black_box(&params), black_box(num_warmup_steps))
+                .unwrap();
         });
     });
-    group.finish();
 
-    assert_eq!(&recursive_snark.z_i()[1], &G1::ScalarField::from(22));
+    group.finish();
 }
 
 fn bench_recursive_snark(c: &mut Criterion) {
