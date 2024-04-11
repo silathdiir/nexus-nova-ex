@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 nexus-nova = { git = "https://github.com/nexus-xyz/nexus-zkvm.git" }
+criterion = "0.5"
+pprof = { version = "0.13", features = ["criterion", "flamegraph"] }
 ark-relations = { version = "0.4.0" }
 ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", rev = "d27a5c8" }
 ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std/", rev = "2ca3bd7" }

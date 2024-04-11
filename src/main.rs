@@ -3,13 +3,15 @@ use ark_ec::short_weierstrass::{Projective, SWCurveConfig};
 use ark_ff::{AdditiveGroup, Field, PrimeField};
 use ark_r1cs_std::fields::{fp::FpVar, FieldVar};
 use ark_relations::r1cs::{ConstraintSystemRef, SynthesisError};
+use criterion::*;
 use nexus_nova::{
-    circuits::supernova::{Error, NIVCProof, NonUniformCircuit, PublicParams},
+    circuits::supernova::{NIVCProof, NonUniformCircuit, PublicParams},
     commitment::CommitmentScheme,
     pedersen::{PedersenCommitment, SVDWMap},
     poseidon_config,
 };
-use std::marker::PhantomData;
+use pprof::criterion::{Output, PProfProfiler};
+use std::{marker::PhantomData, time::Duration};
 
 #[derive(Debug, Default)]
 pub struct TestCircuit<F: Field>(PhantomData<F>);
@@ -58,7 +60,7 @@ impl<F: PrimeField> NonUniformCircuit<F> for TestCircuit<F> {
     }
 }
 
-fn nivc_multiple_steps_with_cycle<G1, G2, C1, C2>() -> Result<(), Error>
+fn nivc_multiple_steps_with_cycle<G1, G2, C1, C2>(c: &mut Criterion)
 where
     G1: SWCurveConfig + SVDWMap,
     G2: SWCurveConfig<BaseField = G1::ScalarField, ScalarField = G1::BaseField> + SVDWMap,
@@ -80,25 +82,48 @@ where
         C2,
         PoseidonSponge<G1::ScalarField>,
         TestCircuit<G1::ScalarField>,
-    >::setup(ro_config, &circuit)?;
+    >::setup(ro_config, &circuit)
+    .unwrap();
 
     let mut recursive_snark = NIVCProof::new(&z_0);
 
-    for _ in 0..num_steps {
-        recursive_snark = NIVCProof::prove_step(recursive_snark, &params, &circuit)?;
-    }
-    recursive_snark.verify(&params, num_steps).unwrap();
+    let mut group = c.benchmark_group(format!("nexus-supernova-{num_steps}"));
+    group.sample_size(10);
+
+    group.bench_function("Prove", |b| {
+        b.iter(|| {
+            for _ in 0..num_steps {
+                recursive_snark =
+                    NIVCProof::prove_step(recursive_snark.clone(), &params, &circuit).unwrap();
+            }
+        })
+    });
+
+    group.bench_function("Verify", |b| {
+        b.iter(|| {
+            recursive_snark.verify(&params, num_steps).unwrap();
+        });
+    });
+    group.finish();
 
     assert_eq!(&recursive_snark.z_i()[1], &G1::ScalarField::from(22));
-    Ok(())
 }
 
-fn main() {
+fn bench_recursive_snark(c: &mut Criterion) {
     nivc_multiple_steps_with_cycle::<
         ark_pallas::PallasConfig,
         ark_vesta::VestaConfig,
         PedersenCommitment<ark_pallas::PallasConfig>,
         PedersenCommitment<ark_vesta::VestaConfig>,
-    >()
-    .unwrap()
+    >(c);
 }
+
+criterion_group! {
+    name = recursive_snark;
+    config = Criterion::default()
+        .with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)))
+        .warm_up_time(Duration::from_millis(3000));
+    targets = bench_recursive_snark,
+}
+
+criterion_main!(recursive_snark);
