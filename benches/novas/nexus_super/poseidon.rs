@@ -7,7 +7,7 @@ use nexus_nova::{
     pedersen::PedersenCommitment,
     poseidon_config,
 };
-use nexus_nova_ex::novas::nexus_super::TestCircuit;
+use nexus_nova_ex::novas::nexus_super::poseidon::TestCircuit;
 use std::time::Instant;
 
 type G1 = ark_pallas::PallasConfig;
@@ -48,8 +48,10 @@ fn benchmark(c: &mut Criterion) {
     }
     println!("Finish warmup steps, elapsed: {:?}", now.elapsed());
 
-    let mut group =
-        c.benchmark_group(format!("nexus-supernova-{}", WARMUP_STEP_NUM + 1));
+    let mut group = c.benchmark_group(format!(
+        "nexus-supernova-poseidon-{}",
+        WARMUP_STEP_NUM + 1
+    ));
     group.sample_size(BENCHMARK_SAMPLE_SIZE);
 
     group.bench_function("Prove", |b| {
@@ -75,9 +77,9 @@ fn benchmark(c: &mut Criterion) {
 }
 
 criterion_group! {
-    name = nexus_super_nova;
+    name = nexus_super_nova_poseidon;
     config = Criterion::default();
     targets = benchmark,
 }
 
-criterion_main!(nexus_super_nova);
+criterion_main!(nexus_super_nova_poseidon);

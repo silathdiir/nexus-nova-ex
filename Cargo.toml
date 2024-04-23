@@ -14,8 +14,13 @@ path = "benches/novas/nexus.rs"
 harness = false
 
 [[bench]]
-name = "nexus_super_nova"
-path = "benches/novas/nexus_super.rs"
+name = "nexus_super_nova_arity_tree"
+path = "benches/novas/nexus_super/arity_tree.rs"
+harness = false
+
+[[bench]]
+name = "nexus_super_nova_poseidon"
+path = "benches/novas/nexus_super/poseidon.rs"
 harness = false
 
 [dependencies]
@@ -27,6 +32,7 @@ ff = { version = "0.13", features = ["derive"] }
 generic-array = "1.0"
 neptune = { version = "13.0", default-features = false }
 pprof = { version = "0.13", features = ["criterion", "flamegraph"] }
+rand = "0.8"
 ark-relations = { version = "0.4" }
 ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", rev = "d27a5c8" }
 ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std/", rev = "2ca3bd7" }
